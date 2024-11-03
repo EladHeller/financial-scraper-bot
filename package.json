@@ -1,0 +1,27 @@
+{
+  "name": "financial-scraper-bot",
+  "version": "1.0.0",
+  "main": "index.js",
+  "scripts": {
+    "start:local": "tsx scripts/index.ts"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "description": "",
+  "dependencies": {
+    "@aws-sdk/client-lambda": "^3.682.0",
+    "@aws-sdk/client-ssm": "^3.682.0",
+    "dotenv": "^16.4.5",
+    "google-apis": "^1.0.0",
+    "googleapis": "^144.0.0",
+    "playwright": "^1.48.2",
+    "typescript": "^5.6.3"
+  },
+  "devDependencies": {
+    "@types/aws-lambda": "^8.10.145",
+    "@types/node": "^22.8.7",
+    "esbuild": "^0.24.0",
+    "tsx": "^4.19.2"
+  }
+}

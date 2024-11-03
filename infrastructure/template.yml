@@ -1,0 +1,72 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  BankUsername:
+    Type: String
+    Description: Bank login username
+    NoEcho: true
+  BankPassword:
+    Type: String
+    Description: Bank login password
+    NoEcho: true
+  GoogleServiceAccountEmail:
+    Type: String
+    NoEcho: true
+  GooglePrivateKey:
+    Type: String
+    NoEcho: true
+  GOOGLE_SHEETS_ID:
+    Type: String
+    NoEcho: true
+
+Resources:
+  BankCredentialsSecret:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /financial-scraper/bank-credentials
+      Type: SecureString
+      Value: !Sub |
+        {
+          "username": "${BankUsername}",
+          "password": "${BankPassword}"
+        }
+
+  GoogleCredentialsSecret:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /financial-scraper/google-credentials
+      Type: SecureString
+      Value: !Sub |
+        {
+          "client_email": "${GoogleServiceAccountEmail}",
+          "private_key": "${GooglePrivateKey}"
+        }
+
+  FinancialScraperFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      Handler: dist/handler.handler
+      Runtime: nodejs18.x
+      Timeout: 300
+      MemorySize: 2048
+      Environment:
+        Variables:
+          GOOGLE_SHEETS_ID: YOUR_SHEET_ID
+          BANK_CREDENTIALS_PARAM: !Ref BankCredentialsSecret
+      Policies:
+        - AWSLambdaBasicExecutionRole
+        - Statement:
+            - Effect: Allow
+              Action:
+                - ssm:GetParameter
+              Resource: !Sub arn:aws:ssm:${AWS::Region}:${AWS::AccountId}:parameter/financial-scraper/*
+
+  ScraperScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      ScheduleExpression: 'cron(0 0 ? * MON *)'
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FinancialScraperFunction.Arn
+          Id: ScrapingSchedule

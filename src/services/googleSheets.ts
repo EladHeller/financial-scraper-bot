@@ -1,6 +1,6 @@
 // src/services/googleSheets.ts
 
-import { google } from 'googleapis';
+import { google, sheets_v4 } from 'googleapis';
 import { JWT } from 'google-auth-library';
 import { AccountData } from '../shared-types';
 
@@ -12,19 +12,17 @@ interface SheetConfig {
   };
 }
 
+const BALANCE_COLUMN = 'F';
+const DATE_COLUMN = 'J';
+const FREE_AMOUNT_COLUMN = 'L';
+
 export class GoogleSheetsService {
   private auth: JWT;
-  private sheets: any;
+  private sheets: sheets_v4.Sheets;
   private config: SheetConfig;
 
-  constructor() {
-    this.config = {
-      spreadsheetId: process.env.GOOGLE_SHEETS_ID!,
-      credentials: {
-        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
-        private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
-      }
-    };
+  constructor(config: SheetConfig) {
+    this.config = config;
 
     this.auth = new JWT({
       email: this.config.credentials.client_email,
@@ -38,27 +36,59 @@ export class GoogleSheetsService {
   async updateSheet(data: AccountData[]): Promise<void> {
     try {
       const date = new Date().toISOString().split('T')[0];
-      
-      // Prepare rows for update
-      const rows = data.map(account => [
-        date,
-        account.accountName,
-        account.balance.toString(),
-      ]);
+      const rowsAndIds = await this.getRowsAndIds();
 
-      // Append data to sheet
-      await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.config.spreadsheetId,
-        range: 'Finance!Q:S', // Adjust range as needed
-        valueInputOption: 'USER_ENTERED',
-        resource: {
-          values: rows,
-        },
-      });
+      await Promise.all(rowsAndIds.map(async ({id, row}) => {
+        const accountData = data.find(account => account.accountName === id);
+
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.config.spreadsheetId,
+          range: `Finance!${BALANCE_COLUMN}${row}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [[accountData?.balance.toString()]],
+          },
+        });
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.config.spreadsheetId,
+          range: `Finance!${DATE_COLUMN}${row}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [[date]],
+          },
+        });
+
+        await this.sheets.spreadsheets.values.update({
+          spreadsheetId: this.config.spreadsheetId,
+          range: `Finance!${FREE_AMOUNT_COLUMN}${row}`,
+          valueInputOption: 'USER_ENTERED',
+          requestBody: {
+            values: [[accountData?.freeAmount?.toString() ?? '']],
+          },
+        });
+      }));
 
       console.log('Successfully updated Google Sheet');
     } catch (error: any) {
       throw new Error(`Failed to update Google Sheet: ${error.message}`);
+    }
+  }
+  
+  async getRowsAndIds(): Promise<{id: string, row: string}[]> {
+    try {
+      const response = await this.sheets.spreadsheets.values.get({
+        spreadsheetId: this.config.spreadsheetId,
+        range: 'Finance!Q6:R8',
+      });
+
+      const values = response.data.values;
+      if (!values || values.length === 0) {
+        return [];
+      }
+
+      return values.map(row => ({ id: row[0], row: row[1] }));
+    } catch (error: any) {
+      throw new Error(`Failed to get rows and ids: ${error.message}`);  
     }
   }
 

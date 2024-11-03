@@ -47,13 +47,14 @@ Resources:
     Type: AWS::Serverless::Function
     Properties:
       Handler: dist/handler.handler
-      Runtime: nodejs18.x
+      Runtime: nodejs20.x
       Timeout: 300
       MemorySize: 2048
       Environment:
         Variables:
-          GOOGLE_SHEETS_ID: YOUR_SHEET_ID
+          GOOGLE_SHEETS_ID: !REF GOOGLE_SHEETS_ID
           BANK_CREDENTIALS_PARAM: !Ref BankCredentialsSecret
+          GOOGLE_SHEETS_CONFIG_PARAM: !REF GoogleCredentialsSecret
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:

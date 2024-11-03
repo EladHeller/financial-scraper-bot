@@ -1,7 +1,6 @@
 import dotenv from 'dotenv';
 import { chromium } from 'playwright';
-import { BankScraper } from '../src/scrapers/bankScraper';
-import { bankUrl } from '../src/shared-configuration';
+import { BankLeumiScraper } from '../src/scrapers/BankLeumiScraper';
 import { GoogleSheetsService } from '../src/services/googleSheets';
 
 dotenv.config();
@@ -12,7 +11,6 @@ async function runLocalScraper() {
   const config = {
     username: process.env.BANK_USERNAME!,
     password: process.env.BANK_PASSWORD!,
-    baseUrl: bankUrl
   };
 
   const browser = await chromium.launch({
@@ -22,17 +20,24 @@ async function runLocalScraper() {
 
   try {
     const page = await browser.newPage();
-    const scraper = new BankScraper(page, config);
-    const sheetsService = new GoogleSheetsService();
+    const scraper = new BankLeumiScraper(page, config);
+    const sheetsService = new GoogleSheetsService({
+      spreadsheetId: process.env.GOOGLE_SHEETS_ID!,
+      credentials: {
+        client_email: process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL!,
+        private_key: process.env.GOOGLE_PRIVATE_KEY!.replace(/\\n/g, '\n'),
+      }
+    });
 
     console.log('Starting data scraping...');
-    const financialData = await scraper.scrapeData();
+    const financialData = await scraper.scrapeTradeData();
+    const mortgageData = await scraper.scrapeMortgageData();
     
-    console.log('Scraped data:', financialData);
+    console.log('Scraped data:', financialData, mortgageData);
     
     if (process.env.UPDATE_SHEETS === 'true') {
       console.log('Updating Google Sheets...');
-      await sheetsService.updateSheet(financialData);
+      await sheetsService.updateSheet([...financialData, mortgageData]);
     }
 
   } catch (error) {

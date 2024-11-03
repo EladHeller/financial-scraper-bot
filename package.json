@@ -5,7 +5,8 @@
   "scripts": {
     "start:local": "tsx scripts/index.ts",
     "build": "tsx infrastructure/build.ts",
-    "deploy": "make deploy"
+    "deploy": "dotenv -e .env -- make -C infrastructure deploy",
+    "create-bucket": "make -C infrastructure create-bucket"
   },
   "keywords": [],
   "author": "",

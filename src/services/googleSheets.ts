@@ -69,7 +69,8 @@ export class GoogleSheetsService {
       }));
 
       console.log('Successfully updated Google Sheet');
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Failed to update Google Sheet: ${error.message}`);
     }
   }
@@ -87,7 +88,8 @@ export class GoogleSheetsService {
       }
 
       return values.map(row => ({ id: row[0], row: row[1] }));
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Failed to get rows and ids: ${error.message}`);  
     }
   }
@@ -105,7 +107,8 @@ export class GoogleSheetsService {
       }
 
       return values[values.length - 1][0];
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Failed to get last update: ${error.message}`);
     }
   }

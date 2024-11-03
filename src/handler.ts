@@ -1,4 +1,4 @@
-import type { Context, APIGatewayProxyResult } from 'aws-lambda';
+import type { APIGatewayProxyResult } from 'aws-lambda';
 import { chromium } from 'playwright-core';
 import chrome from 'chrome-aws-lambda';
 import { GoogleSheetsService } from './services/googleSheets';
@@ -18,14 +18,14 @@ async function getBankCredentials() {
 
 async function getGoogleSheetsConfig() {
   const command = new GetParameterCommand({
-    Name: process.env.GOOGLE_SHEETS_CONFIG_PARAM,
+    Name: process.env.GOOGLE_CREDENTIALS_PARAM,
     WithDecryption: true
   });
   const response = await ssm.send(command);
   return JSON.parse(response.Parameter?.Value || '{}');
 }
 
-export async function handler(event: any, context: Context): Promise<APIGatewayProxyResult> {
+export async function handler(): Promise<APIGatewayProxyResult> {
   const browser = await chromium.launch({
     headless: true,
     executablePath: await chrome.executablePath,
@@ -35,21 +35,19 @@ export async function handler(event: any, context: Context): Promise<APIGatewayP
   try {
     const page = await browser.newPage();
     const scraper = new BankLeumiScraper(page, await getBankCredentials());
-    const sheetsService = new GoogleSheetsService({
-      spreadsheetId: process.env.GOOGLE_SHEETS_ID!,
-      credentials: await getGoogleSheetsConfig()
-  });
+    const sheetsService = new GoogleSheetsService(await getGoogleSheetsConfig());
 
     console.log('Starting data scraping...');
     const financialData = await scraper.scrapeTradeData();
     const mortgageData = await scraper.scrapeMortgageData();
     console.log('Updating Google Sheets...');
     await sheetsService.updateSheet([...financialData,mortgageData]);
-  } catch (error: any) {
-    console.error('Error during scraping:', error);
+  } catch (e) {
+    console.error('Error during scraping:', e);
+    const error = e as Error;
     return {
       statusCode: 500,
-      body: JSON.stringify({ error: error.message })
+      body: JSON.stringify({ error: error?.message ?? error })
     };
   } finally {
     await browser.close();

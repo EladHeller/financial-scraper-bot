@@ -16,7 +16,7 @@ Parameters:
   GooglePrivateKey:
     Type: String
     NoEcho: true
-  GOOGLE_SHEETS_ID:
+  GoogleSpreadsheetId:
     Type: String
     NoEcho: true
 
@@ -25,7 +25,7 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /financial-scraper/bank-credentials
-      Type: SecureString
+      Type: String
       Value: !Sub |
         {
           "username": "${BankUsername}",
@@ -36,11 +36,14 @@ Resources:
     Type: AWS::SSM::Parameter
     Properties:
       Name: /financial-scraper/google-credentials
-      Type: SecureString
+      Type: String
       Value: !Sub |
         {
-          "client_email": "${GoogleServiceAccountEmail}",
-          "private_key": "${GooglePrivateKey}"
+          "credentials": {
+            "client_email": "${GoogleServiceAccountEmail}",
+            "private_key": "${GooglePrivateKey}"
+          },
+          "spreadsheetId": "${GoogleSpreadsheetId}"
         }
 
   FinancialScraperFunction:
@@ -52,9 +55,8 @@ Resources:
       MemorySize: 2048
       Environment:
         Variables:
-          GOOGLE_SHEETS_ID: !REF GOOGLE_SHEETS_ID
           BANK_CREDENTIALS_PARAM: !Ref BankCredentialsSecret
-          GOOGLE_SHEETS_CONFIG_PARAM: !REF GoogleCredentialsSecret
+          GOOGLE_CREDENTIALS_PARAM: !Ref GoogleCredentialsSecret
       Policies:
         - AWSLambdaBasicExecutionRole
         - Statement:

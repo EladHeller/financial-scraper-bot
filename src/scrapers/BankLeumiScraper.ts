@@ -43,7 +43,8 @@ export class BankLeumiScraper {
       await submitButon.click();
       
       await this.page.waitForSelector('body.consumer,#topMenu', { timeout: 10000 });
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Login failed: ${error.message}`);
     }
   }
@@ -84,7 +85,8 @@ export class BankLeumiScraper {
       }
 
       return accounts;
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Data scraping failed: ${error.message}`);
     }
   }
@@ -107,7 +109,8 @@ export class BankLeumiScraper {
         balance,
         lastUpdated
       };
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       throw new Error(`Mortgage scraping failed: ${error.message}`);
     }
   }
@@ -117,7 +120,8 @@ export class BankLeumiScraper {
     try {
       await this.page.click('#logout-button');
       await this.page.waitForSelector('#login-username');
-    } catch (error: any) {
+    } catch (e) {
+      const error = e as Error;
       console.warn('Logout failed:', error.message);
     }
   }

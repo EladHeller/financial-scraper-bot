@@ -8,11 +8,10 @@ build:
 	cd .. && npm run build
 
 package:
-	mkdir -p .aws-sam && \
+	rm -rf .aws-sam && mkdir .aws-sam && \
 	cp ../package.json ../dist && \
 	cp ../package-lock.json ../dist && \
-	cd ../dist && npm ci --omit=dev && \
-	cd ../dist && zip -r ../infrastructure/.aws-sam/function.zip .
+	cd ../dist && npm ci --omit=dev
 
 create-bucket:
 	aws s3api create-bucket \

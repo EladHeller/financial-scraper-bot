@@ -4,7 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start:local": "tsx scripts/index.ts",
-    "build": "tsx infrastructure/build.ts",
+    "build": "rm -rf ./dist && tsc",
     "deploy": "dotenv -e .env -- make -C infrastructure deploy",
     "create-bucket": "make -C infrastructure create-bucket"
   },
@@ -15,19 +15,17 @@
   "dependencies": {
     "@aws-sdk/client-lambda": "^3.682.0",
     "@aws-sdk/client-ssm": "^3.682.0",
-    "chrome-aws-lambda": "^10.1.0",
     "dotenv": "^16.4.5",
     "google-apis": "^1.0.0",
     "googleapis": "^144.0.0",
     "playwright": "^1.48.2",
+    "playwright-aws-lambda": "^0.11.0",
     "playwright-core": "^1.48.2",
     "typescript": "^5.6.3"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.145",
     "@types/node": "^22.8.7",
-    "esbuild": "^0.24.0",
-    "esbuild-node-externals": "^1.15.0",
     "tsx": "^4.19.2"
   }
 }

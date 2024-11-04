@@ -49,10 +49,11 @@ Resources:
   FinancialScraperFunction:
     Type: AWS::Serverless::Function
     Properties:
-      Handler: dist/handler.handler
+      Handler: dist/handler.main
       Runtime: nodejs20.x
       Timeout: 300
       MemorySize: 2048
+      CodeUri: ../dist
       Environment:
         Variables:
           BANK_CREDENTIALS_PARAM: !Ref BankCredentialsSecret

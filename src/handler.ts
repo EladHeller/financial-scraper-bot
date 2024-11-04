@@ -1,9 +1,8 @@
 import type { APIGatewayProxyResult } from 'aws-lambda';
-import { chromium } from 'playwright-core';
-import chrome from 'chrome-aws-lambda';
 import { GoogleSheetsService } from './services/googleSheets';
 import { BankLeumiScraper } from './scrapers/BankLeumiScraper';
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
+import playwright from 'playwright-aws-lambda';
 
 const ssm = new SSMClient({});
 
@@ -25,12 +24,8 @@ async function getGoogleSheetsConfig() {
   return JSON.parse(response.Parameter?.Value || '{}');
 }
 
-export async function handler(): Promise<APIGatewayProxyResult> {
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: await chrome.executablePath,
-    args: chrome.args,
-  });
+export async function main(): Promise<APIGatewayProxyResult> {
+  const browser = await playwright.launchChromium();
 
   try {
     const page = await browser.newPage();

@@ -68,7 +68,7 @@ Resources:
   ScraperScheduleRule:
     Type: AWS::Events::Rule
     Properties:
-      ScheduleExpression: 'cron(0 0 ? * MON *)'
+      ScheduleExpression: 'cron(0 0 ? * TUE *)'
       State: ENABLED
       Targets:
         - Arn: !GetAtt FinancialScraperFunction.Arn

@@ -2,8 +2,8 @@ import type { APIGatewayProxyResult } from 'aws-lambda';
 import { GoogleSheetsService } from './services/googleSheets';
 import { BankLeumiScraper } from './scrapers/BankLeumiScraper';
 import { SSMClient, GetParameterCommand } from "@aws-sdk/client-ssm";
-import playwright from 'playwright-aws-lambda';
-
+import puppeteer from 'puppeteer-core';
+import chromium from "@sparticuz/chromium";
 const ssm = new SSMClient({});
 
 async function getBankCredentials() {
@@ -25,7 +25,14 @@ async function getGoogleSheetsConfig() {
 }
 
 export async function main(): Promise<APIGatewayProxyResult> {
-  const browser = await playwright.launchChromium();
+  const browser = await puppeteer.launch({
+    args: chromium.args,
+    defaultViewport: chromium.defaultViewport,
+    executablePath: await chromium.executablePath(),
+    headless: chromium.headless,
+  });
+
+
 
   try {
     const page = await browser.newPage();

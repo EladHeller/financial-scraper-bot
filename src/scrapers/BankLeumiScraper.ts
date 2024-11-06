@@ -1,4 +1,5 @@
-import { Page } from 'playwright';
+import type { Page } from 'puppeteer';
+import type { Page as CorePage } from 'puppeteer-core';
 import { AccountData } from '../shared-types';
 
 interface ScraperConfig {
@@ -11,38 +12,39 @@ const TRADE_URL = BASE_URL + '/lti/lti-app/home';
 const MORTGAGE_URL = BASE_URL + '/ebanking/LoanAndMortgages/DisplayLoansAndMortgagesSummary.aspx';
 
 export class BankLeumiScraper {
-  private page: Page;
+  private page: Page | CorePage;
   private config: ScraperConfig;
 
-  constructor(page: Page, config: ScraperConfig) {
+  constructor(page: Page | CorePage, config: ScraperConfig) {
     this.page = page;
     this.config = config;
   }
 
   async login(url: string): Promise<void> {
+    const page = this.page as Page;
     try {
-      await this.page.goto(url);
-      const submitButon = this.page.getByRole('button', { name: 'כניסה לחשבון' });
-
-      const isSubmitButtonVisible = await submitButon.isVisible();
-      if (!isSubmitButtonVisible) {
+      await page.goto(url);
+      
+      const submitButton = await page.$('button[type="submit"]');
+      if (!submitButton) {
         return;
       }
-      
-      // Wait for login form
-      await this.page.getByPlaceholder('שם משתמש').waitFor({
-        state: 'visible',
+
+      await page.waitForSelector('input[placeholder="שם משתמש"]', {
+        visible: true,
         timeout: 10000
       });
       
-      // Fill login credentials
-      await this.page.getByPlaceholder('שם משתמש').fill(this.config.username);
-      await this.page.getByPlaceholder('סיסמה').fill(this.config.password);
+      await page.type('input[placeholder="שם משתמש"]', this.config.username);
+      await page.type('input[placeholder="סיסמה"]', this.config.password);
       
-      // Submit form
-      await submitButon.click();
+      await submitButton.click();
       
-      await this.page.waitForSelector('body.consumer,#topMenu', { timeout: 10000 });
+      await page.waitForSelector('body.consumer,#topMenu', { 
+        visible: true,
+        timeout: 10000 
+      });
+      console.log('Logged in successfully');
     } catch (e) {
       const error = e as Error;
       throw new Error(`Login failed: ${error.message}`);
@@ -50,36 +52,49 @@ export class BankLeumiScraper {
   }
 
   async scrapeTradeData(): Promise<AccountData[]> {
+    const page = this.page as Page;
     try {
       await this.login(TRADE_URL);
 
-      // Wait for account elements
-      const summaryBar = this.page.locator('.summary-gallery');
-      const accountSwitcher = this.page.locator('.portfolio-combo');
-      const options = (await accountSwitcher.locator('.portfolio-combo-options [u1st-role="button"]').elementHandles()).length;
-      
       const accounts: AccountData[] = [];
-
-      for (let i = 0; i < options; i++) {
+      
+      await page.waitForSelector('.summary-gallery');
+      
+      const accountOptions = await page.$$('.portfolio-combo-options [u1st-role="button"]');
+      
+      for (let i = 0; i < accountOptions.length; i++) {
         if (i > 0) {
-          await accountSwitcher.click();
-          const option = accountSwitcher.locator('.portfolio-combo-options [u1st-role="button"]').nth(i);
-          await option.click();
-          await this.page.waitForSelector('.loading', { timeout: 10000 });
-          await this.page.waitForSelector('.loading', { state: 'hidden', timeout: 10000 });
+          await page.click('.portfolio-combo');
+          await page.waitForSelector('.portfolio-combo-options [u1st-role="button"]');
+          await accountOptions[i].click();
+          await page.waitForSelector('.loading');
+          await page.waitForSelector('.loading', { hidden: true });
         }
-        const accountName = await summaryBar.locator('.portfolio-combo-selected').textContent();
-        const balanceText = await summaryBar.locator('.card.ng-star-inserted:first-child .number').textContent();
-        const freeAmountText = await summaryBar.locator('.card.ng-star-inserted:last-child .number').textContent();
-        
-        // Convert balance string to number
-        const balance = parseFloat(balanceText?.replace(/[^0-9.-]+/g, '') || '0');
-        const freeAmount = parseFloat(freeAmountText?.replace(/[^0-9.-]+/g, '') || '0');
-        
+
+        const accountName = await page.$eval(
+          '.portfolio-combo-selected',
+          el => el.textContent?.trim() || 'Unknown Account'
+          
+        );
+        await page.waitForSelector('.card.ng-star-inserted:first-child .number');
+        const balanceText = await page.$eval(
+          '.card.ng-star-inserted:first-child .number',
+          el => el.textContent || '0',
+
+        );
+
+        const freeAmountText = await page.$eval(
+          '.card.ng-star-inserted:last-child .number',
+          el => el.textContent || '0'
+        );
+
+        const balance = parseFloat(balanceText.replace(/[^0-9.-]+/g, '') || '0');
+        const freeAmount = parseFloat(freeAmountText.replace(/[^0-9.-]+/g, '') || '0');
+
         accounts.push({
-          accountName: accountName?.trim() || 'Unknown Account',
-          balance: balance,
-          freeAmount: freeAmount,
+          accountName,
+          balance,
+          freeAmount,
           lastUpdated: new Date()
         });
       }
@@ -90,39 +105,29 @@ export class BankLeumiScraper {
       throw new Error(`Data scraping failed: ${error.message}`);
     }
   }
-  
+
   async scrapeMortgageData(): Promise<AccountData> {
+    const page = this.page as Page;
     try {
       await this.login(BASE_URL);
-      // Wait for mortgage elements
-      await this.page.getByRole('menuitem', {
-        name: 'הלוואות, משכנתאות וערבויות'
-      }).waitFor({ state: 'visible', timeout: 10000 });
-
-      await this.page.goto(MORTGAGE_URL);
       
-      const balanceText = await this.page.locator('.boldInExcel:nth-child(3)').textContent();
-      const balance = -parseFloat(balanceText?.replace(/[^0-9.-]+/g, '') || '0');
-      const lastUpdated = new Date();        
+      await page.goto(MORTGAGE_URL);
+      
+      const balanceText = await page.$eval(
+        '.boldInExcel:nth-child(3)',
+        el => el.textContent || '0'
+      );
+      
+      const balance = -parseFloat(balanceText.replace(/[^0-9.-]+/g, '') || '0');
+      
       return {
         accountName: 'Mortgage',
         balance,
-        lastUpdated
+        lastUpdated: new Date()
       };
     } catch (e) {
       const error = e as Error;
       throw new Error(`Mortgage scraping failed: ${error.message}`);
-    }
-  }
-
-  async close(): Promise<void> {
-    // Perform logout if needed
-    try {
-      await this.page.click('#logout-button');
-      await this.page.waitForSelector('#login-username');
-    } catch (e) {
-      const error = e as Error;
-      console.warn('Logout failed:', error.message);
     }
   }
 }

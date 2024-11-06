@@ -1,5 +1,5 @@
 import dotenv from 'dotenv';
-import { chromium } from 'playwright';
+import puppeteer from 'puppeteer';
 import { BankLeumiScraper } from '../src/scrapers/BankLeumiScraper';
 import { GoogleSheetsService } from '../src/services/googleSheets';
 
@@ -13,9 +13,8 @@ async function runLocalScraper() {
     password: process.env.BANK_PASSWORD!,
   };
 
-  const browser = await chromium.launch({
-    headless: false, // Set to true for production
-    slowMo: 100 // Slows down operations for debugging
+  const browser = await puppeteer.launch({
+    headless: false,
   });
 
   try {

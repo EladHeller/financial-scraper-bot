@@ -54,6 +54,8 @@ export class BankLeumiScraper {
       await this.login(TRADE_URL);
 
       // Wait for account elements
+      await this.page.waitForSelector('.summary-number', { timeout: 10000 });
+
       const summaryBar = this.page.locator('.summary-gallery');
       const accountSwitcher = this.page.locator('.portfolio-combo');
       const options = (await accountSwitcher.locator('.portfolio-combo-options [u1st-role="button"]').elementHandles()).length;
@@ -116,13 +118,6 @@ export class BankLeumiScraper {
   }
 
   async close(): Promise<void> {
-    // Perform logout if needed
-    try {
-      await this.page.click('#logout-button');
-      await this.page.waitForSelector('#login-username');
-    } catch (e) {
-      const error = e as Error;
-      console.warn('Logout failed:', error.message);
-    }
+    await this.page.close();
   }
 }

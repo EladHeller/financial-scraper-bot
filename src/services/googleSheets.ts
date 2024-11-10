@@ -79,7 +79,7 @@ export class GoogleSheetsService {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.config.spreadsheetId,
-        range: 'Finance!Q6:R8',
+        range: 'Finance!Q6:R16',
       });
 
       const values = response.data.values;

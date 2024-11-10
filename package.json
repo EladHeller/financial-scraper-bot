@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
-    "start:local": "tsx scripts/index.ts",
+    "start": "tsx scripts/index.ts",
     "build": "rm -rf ./dist && tsc",
     "deploy": "dotenv -e .env -- make -C infrastructure deploy",
     "create-bucket": "make -C infrastructure create-bucket"

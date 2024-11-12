@@ -24,9 +24,18 @@ export default class MessagesOTP {
             throw new Error('Failed to initialize page');
         }
 
-        await this.page.locator('mws-conversation-list-item .name', {
+        const items = await this.page.locator('mws-conversation-list-item .name', {
             hasText: name
-        }).click();
+        }).all();
+
+        const item = items.filter(async (item) => {
+            return (await item.textContent())?.trim() === name;
+        });
+
+        if (!item || item.length === 0) {
+            throw new Error('Failed to find conversation');
+        }
+        await item[0].click();
 
         const mexRetries = 5;
 

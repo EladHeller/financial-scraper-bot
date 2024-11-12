@@ -25,6 +25,7 @@ export class ClalScraper {
       await this.page.goto(url);
       const submitButon = this.page.getByRole('button', { name: 'שליחה' });
       await this.page.waitForLoadState('domcontentloaded');
+      await this.page.waitForTimeout(2000);
       const isSubmitButtonVisible = await submitButon.isVisible();
       if (!isSubmitButtonVisible) {
         return;

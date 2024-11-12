@@ -79,7 +79,7 @@ async function runLocalScraper() {
   }
 
   if (scrapingData.length) {
-    console.log('Updating Google Sheets...');
+    console.log('Updating Google Sheets...', scrapingData);
     await sheetsService.updateSheet(scrapingData);
   }
 }

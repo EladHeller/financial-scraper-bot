@@ -1,8 +1,9 @@
 import { BrowserContext, Page } from "playwright";
+import { OTPService } from "../shared-types";
 
 const recievedRegex = /התקבלה ב-(\d{1,2} ב[א-ת]{3,10} \d{4}) בשעה (\d{1,2}):(\d{2})/;
 
-export default class MessagesOTP {
+export default class MessagesOTP implements OTPService {
     private context: BrowserContext;
     private page?: Page;
     

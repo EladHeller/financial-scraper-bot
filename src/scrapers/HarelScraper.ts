@@ -1,23 +1,24 @@
 import { Page } from 'playwright';
-import { AccountData } from '../shared-types';
-import MessagesOTP from './MessagesOTP';
-
-interface ScraperConfig {
-  identityNumber: string;
-  phoneNumber: string;
-}
+import { AccountData, OtpConfig, OTPService, Scraper } from '../shared-types';
 
 const LOGIN_URL = 'https://www.harel-group.co.il/personal-info/my-harel/Pages/client-view.aspx';
 
-export class HarelScraper {
+export class HarelScraper implements Scraper {
   private page: Page;
-  private config: ScraperConfig;
-  private otpService: MessagesOTP;
+  private config: OtpConfig;
+  private otpService: OTPService;
 
-  constructor(page: Page, otpService: MessagesOTP, config: ScraperConfig) {
+  get name(): string {
+    return HarelScraper.name;
+  }
+
+  constructor(page: Page, otpService: OTPService, config: OtpConfig) {
     this.config = config;
     this.page = page;
     this.otpService = otpService;
+  }
+  scrapeMortgageData?(): Promise<AccountData[]> {
+    throw new Error('Method not implemented.');
   }
 
   async login(url: string): Promise<void> {
@@ -57,7 +58,7 @@ export class HarelScraper {
     }
   }
 
-  async scrapeData(): Promise<AccountData> {
+  async scrapeData(): Promise<AccountData[]> {
     try {
       await this.login(LOGIN_URL);
 
@@ -77,11 +78,11 @@ export class HarelScraper {
       if (isNaN(balance)) {
         throw new Error('Failed to get balance');
       }
-      return {
+      return [{
         accountName: 'Harel',
         balance,
         lastUpdated: new Date(),
-      }
+      }];
     } catch (e) {
       const error = e as Error;
       throw new Error(`Data scraping failed: ${error.message}`);

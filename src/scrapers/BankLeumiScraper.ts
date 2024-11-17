@@ -1,20 +1,19 @@
 import { Page } from 'playwright';
-import { AccountData } from '../shared-types';
-
-interface ScraperConfig {
-  username: string;
-  password: string;
-}
+import { AccountData, BankConfig, Scraper } from '../shared-types';
 
 const BASE_URL = 'https://hb2.bankleumi.co.il';
 const TRADE_URL = BASE_URL + '/lti/lti-app/home';
 const MORTGAGE_URL = BASE_URL + '/ebanking/LoanAndMortgages/DisplayLoansAndMortgagesSummary.aspx';
 
-export class BankLeumiScraper {
+export class BankLeumiScraper implements Scraper {
   private page: Page;
-  private config: ScraperConfig;
+  private config: BankConfig;
 
-  constructor(page: Page, config: ScraperConfig) {
+  get name(): string {
+    return BankLeumiScraper.name;
+  }
+
+  constructor(page: Page, config: BankConfig) {
     this.page = page;
     this.config = config;
   }
@@ -49,7 +48,7 @@ export class BankLeumiScraper {
     }
   }
 
-  async scrapeTradeData(): Promise<AccountData[]> {
+  async scrapeData(): Promise<AccountData[]> {
     try {
       await this.login(TRADE_URL);
 
@@ -93,7 +92,7 @@ export class BankLeumiScraper {
     }
   }
   
-  async scrapeMortgageData(): Promise<AccountData> {
+  async scrapeMortgageData(): Promise<AccountData[]> {
     try {
       await this.login(BASE_URL);
       // Wait for mortgage elements
@@ -106,11 +105,11 @@ export class BankLeumiScraper {
       const balanceText = await this.page.locator('.boldInExcel:nth-child(3)').textContent();
       const balance = -parseFloat(balanceText?.replace(/[^0-9.-]+/g, '') || '0');
       const lastUpdated = new Date();        
-      return {
+      return [{
         accountName: 'Mortgage',
         balance,
         lastUpdated
-      };
+      }];
     } catch (e) {
       const error = e as Error;
       throw new Error(`Mortgage scraping failed: ${error.message}`);

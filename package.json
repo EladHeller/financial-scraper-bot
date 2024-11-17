@@ -4,6 +4,7 @@
   "main": "index.js",
   "scripts": {
     "start": "tsx scripts/index.ts",
+    "start:other": "tsx scripts/otherScraper.ts",
     "build": "rm -rf ./dist && tsc",
     "deploy": "dotenv -e .env -- make -C infrastructure deploy",
     "create-bucket": "make -C infrastructure create-bucket"

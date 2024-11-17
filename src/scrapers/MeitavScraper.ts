@@ -1,20 +1,18 @@
 import { Page } from 'playwright';
-import { AccountData } from '../shared-types';
-import MessagesOTP from './MessagesOTP';
-
-interface ScraperConfig {
-  identityNumber: string;
-  phoneNumber: string;
-}
+import { AccountData, OtpConfig, OTPService, Scraper } from '../shared-types';
 
 const LOGIN_URL = 'https://customers.meitav.co.il/v2/login/loginAmit';
 
-export class MeitavScraper {
+export class MeitavScraper implements Scraper {
   private page: Page;
-  private config: ScraperConfig;
-  private otpService: MessagesOTP;
+  private config: OtpConfig;
+  private otpService: OTPService;
 
-  constructor(page: Page, otpService: MessagesOTP, config: ScraperConfig) {
+  get name(): string {
+    return MeitavScraper.name;
+  }
+
+  constructor(page: Page, otpService: OTPService, config: OtpConfig) {
     this.config = config;
     this.page = page;
     this.otpService = otpService;
@@ -57,7 +55,7 @@ export class MeitavScraper {
     }
   }
 
-  async scrapeData(): Promise<AccountData> {
+  async scrapeData(): Promise<AccountData[]> {
     try {
       await this.login(LOGIN_URL);
 
@@ -67,11 +65,11 @@ export class MeitavScraper {
       
       const amountText = await sumContainer.innerText();
 
-      return {
+      return [{
         accountName: 'Meitav',
         balance: Number(amountText.replace(/,/g, '')),
         lastUpdated: new Date(),
-      }
+      }];
     } catch (e) {
       const error = e as Error;
       console.error('Data scraping failed', error);

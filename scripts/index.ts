@@ -1,24 +1,20 @@
 import dotenv from 'dotenv';
 import { chromium } from 'playwright';
-import { BankLeumiScraper } from '../src/scrapers/BankLeumiScraper';
 import MessagesOTP from '../src/scrapers/MessagesOTP';
-import {MeitavScraper} from '../src/scrapers/MeitavScraper';
-import {HarelScraper} from '../src/scrapers/HarelScraper';
-import {MenoraScraper} from '../src/scrapers/MenoraScraper';
-import {ClalScraper} from '../src/scrapers/ClalScraper';
 import { GoogleSheetsService } from '../src/services/googleSheets';
 import { AccountData } from '../src/shared-types';
+import ScraperFactory from '../src/scrapers/ScraperFactory';
 
 dotenv.config();
 
 async function runLocalScraper() {
   console.log('Starting local bank scraper...');
   
-  const leumiConfig = {
+  const bankConfig = {
     username: process.env.BANK_USERNAME!,
     password: process.env.BANK_PASSWORD!,
   };
-  const meitavConfig = {
+  const otpConfig = {
     identityNumber: process.env.IDENTITY_NUMBER!,
     phoneNumber: process.env.PHONE_NUMBER!,
   };
@@ -26,11 +22,12 @@ async function runLocalScraper() {
   const browser = await chromium.connectOverCDP('http://localhost:9222');
   const context  = browser.contexts()[0];
   const otpService = new MessagesOTP(context);
-  const meitavScraper = new MeitavScraper(await context.newPage(), otpService, meitavConfig); 
-  const menoraScraper = new MenoraScraper(await context.newPage(), otpService, meitavConfig); 
-  const harelScraper = new HarelScraper(await context.newPage(), otpService, meitavConfig);
-  const leumiScraper = new BankLeumiScraper(await context.newPage(), leumiConfig);
-  const clalScraper = new ClalScraper(await context.newPage(), otpService, meitavConfig);
+  const factory = ScraperFactory(otpService, otpConfig, bankConfig);
+  const accounts = process.env.ACCOUNTS?.split(',');
+  if (!accounts || accounts.length === 0) {
+    throw new Error('No accounts provided');
+  }
+  const scrapers = await Promise.all(accounts.map(async account => factory.getScraper(account, await context.newPage())));
   const sheetsService = new GoogleSheetsService({
     spreadsheetId: process.env.GOOGLE_SPREADSHEET_ID!,
     credentials: {
@@ -40,43 +37,24 @@ async function runLocalScraper() {
   });
 
   const scrapingData: AccountData[] = [];
-  try {
-    console.log('Starting data scraping...');
-
-    const financialData = await leumiScraper.scrapeTradeData();
-    scrapingData.push(...financialData);
-    const mortgageData = await leumiScraper.scrapeMortgageData();
-    scrapingData.push(mortgageData);
-    await leumiScraper.close();
-
-    const clalData = await clalScraper.scrapeData();
-    scrapingData.push(clalData);
-    await clalScraper.close();
-
-    const menoraData = await menoraScraper.scrapeData();
-    scrapingData.push(menoraData);
-    await menoraScraper.close();
-
-    const harelData = await harelScraper.scrapeData();
-    scrapingData.push(harelData);
-    await harelScraper.close();
-
-    const meitavData = await meitavScraper.scrapeData();
-    scrapingData.push(meitavData);
-    await meitavScraper.close();
-
-    
-    console.log('Scraped data:', financialData, mortgageData, meitavData, harelData, menoraData);
-  } catch (error) {
-    console.error('Error during scraping:', error);
-  } finally {
-    await otpService.close();
-    await menoraScraper.close();
-    await leumiScraper.close();
-    await meitavScraper.close();
-    await harelScraper.close();
-    await browser.close();
+  console.log('Starting data scraping...');
+  for (const scraper of scrapers) {
+    try {
+      const data = await scraper.scrapeData();
+      scrapingData.push(...data);
+      if (scraper.scrapeMortgageData) {
+        const mortgageData = await scraper.scrapeMortgageData();
+        scrapingData.push(...mortgageData);
+      }
+    } catch (error) {
+      console.error('Error during scraping:', scraper.name, error);
+    }
   }
+  await otpService.close();
+  for (const scraper of scrapers) {
+    await scraper.close();
+  }
+  await browser.close();
 
   if (scrapingData.length) {
     console.log('Updating Google Sheets...', scrapingData);

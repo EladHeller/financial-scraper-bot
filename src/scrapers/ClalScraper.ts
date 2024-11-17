@@ -1,20 +1,19 @@
 import { Page } from 'playwright';
-import { AccountData } from '../shared-types';
-import MessagesOTP from './MessagesOTP';
+import { AccountData, OtpConfig, OTPService, Scraper } from '../shared-types';
 
-interface ScraperConfig {
-  identityNumber: string;
-  phoneNumber: string;
-}
 
 const LOGIN_URL = 'https://www.clalbit.co.il/Portfolio/';
 
-export class ClalScraper {
+export class ClalScraper implements Scraper { 
   private page: Page;
-  private config: ScraperConfig;
-  private otpService: MessagesOTP;
+  private config: OtpConfig;
+  private otpService: OTPService;
 
-  constructor(page: Page, otpService: MessagesOTP, config: ScraperConfig) {
+  get name(): string {
+    return ClalScraper.name;
+  }
+
+  constructor(page: Page, otpService: OTPService, config: OtpConfig) {
     this.config = config;
     this.page = page;
     this.otpService = otpService;
@@ -58,21 +57,38 @@ export class ClalScraper {
     }
   }
 
-  async scrapeData(): Promise<AccountData> {
+  async scrapeData(): Promise<AccountData[]> {
     try {
       await this.login(LOGIN_URL);
 
+      const accounts = await this.page.locator('app-policy-details-desktop').count();
 
-      const amountText = await this.page.locator('.financial-data-sum').first().innerText();
-      const balance = Number(amountText.replace(/[,₪ ]/g, ''));
-      if (isNaN(balance)) {
-        throw new Error('Failed to get balance');
+      if (accounts === 0) {
+        throw new Error('Failed to find accounts');
       }
-      return {
-        accountName: 'Clal',
-        balance,
-        lastUpdated: new Date(),
+
+      const accountsData: AccountData[] = [];
+
+      for (let i = 0; i < accounts; i++) {
+        const account = this.page.locator('app-policy-details-desktop').nth(i);
+        const accountNameText = await account.locator('.link-content-num-policy').innerText();
+        const accountName = accountNameText.trim().match(/\d{1,30}/)?.[0];
+        if (!accountName) {
+          throw new Error('Failed to get account name');
+        }
+        const balanceText = await account.locator('.financial-data-sum').innerText();
+        const balance = Number(balanceText.replace(/[,₪ ]/g, ''));
+        if (isNaN(balance)) {
+          throw new Error('Failed to get balance');
+        }
+        accountsData.push({
+          accountName,
+          balance,
+          lastUpdated: new Date(),
+        });
       }
+
+      return accountsData;
     } catch (e) {
       const error = e as Error;
       throw new Error(`Data scraping failed: ${error.message}`);

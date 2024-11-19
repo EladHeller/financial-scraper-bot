@@ -40,13 +40,15 @@ export class GoogleSheetsService {
 
       await Promise.all(rowsAndIds.map(async ({id, row}) => {
         const accountData = data.find(account => account.accountName === id);
-
+        if (!accountData?.balance) {
+          return;
+        }
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.config.spreadsheetId,
           range: `Finance!${BALANCE_COLUMN}${row}`,
           valueInputOption: 'USER_ENTERED',
           requestBody: {
-            values: [[accountData?.balance.toString()]],
+            values: [[accountData.balance.toString()]],
           },
         });
         await this.sheets.spreadsheets.values.update({
@@ -57,15 +59,16 @@ export class GoogleSheetsService {
             values: [[date]],
           },
         });
-
-        await this.sheets.spreadsheets.values.update({
-          spreadsheetId: this.config.spreadsheetId,
-          range: `Finance!${FREE_AMOUNT_COLUMN}${row}`,
-          valueInputOption: 'USER_ENTERED',
-          requestBody: {
-            values: [[accountData?.freeAmount?.toString() ?? '']],
-          },
-        });
+        if (accountData.freeAmount) {
+          await this.sheets.spreadsheets.values.update({
+            spreadsheetId: this.config.spreadsheetId,
+            range: `Finance!${FREE_AMOUNT_COLUMN}${row}`,
+            valueInputOption: 'USER_ENTERED',
+            requestBody: {
+              values: [[accountData.freeAmount?.toString() ?? '']],
+            },
+          });
+        }
       }));
 
       console.log('Successfully updated Google Sheet');

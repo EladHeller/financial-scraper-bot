@@ -17,9 +17,6 @@ export class HarelScraper implements Scraper {
     this.page = page;
     this.otpService = otpService;
   }
-  scrapeMortgageData?(): Promise<AccountData[]> {
-    throw new Error('Method not implemented.');
-  }
 
   async login(url: string): Promise<void> {
     try {

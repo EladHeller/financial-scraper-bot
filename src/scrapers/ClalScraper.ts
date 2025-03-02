@@ -36,7 +36,7 @@ export class ClalScraper implements Scraper {
       // Wait for login form
       await idInput.waitFor({
         state: 'visible',
-        timeout: 10000
+        timeout: 15000
       });
       const {identityNumber, phoneNumber} = this.config;
 

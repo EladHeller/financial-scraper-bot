@@ -48,7 +48,7 @@ export class MeitavScraper implements Scraper {
       await this.page.getByPlaceholder('XXXXXX').fill(otp);
       await submitButon.click();
       
-      await this.page.waitForSelector('.mainInfo', { timeout: 10000 });
+      await this.page.waitForSelector('.AmitLobby', { timeout: 10000 });
     } catch (e) {
       const error = e as Error;
       throw new Error(`Login failed: ${error.message}`);
@@ -60,14 +60,14 @@ export class MeitavScraper implements Scraper {
       await this.login(LOGIN_URL);
 
       // Wait for account elements
-      const sumContainer = this.page.locator('.mainInfoItem .bigSum').first();
+      const sumContainer = this.page.locator('.mainInfoItem .productSum').first();
       await sumContainer.waitFor({ state: 'visible', timeout: 10000 });
       
       const amountText = await sumContainer.innerText();
 
       return [{
         accountName: 'Meitav',
-        balance: Number(amountText.replace(/,/g, '')),
+        balance: Number(amountText.replace(/[, ₪]/g, '')),
         lastUpdated: new Date(),
       }];
     } catch (e) {

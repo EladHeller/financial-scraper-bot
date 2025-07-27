@@ -2,7 +2,7 @@ import { BrowserContext, Page } from "playwright";
 import { OTPService } from "../shared-types";
 
 const recievedRegex = /התקבלה ב-(\d{1,2} ב[א-ת]{3,10} \d{4}) בשעה (\d{1,2}):(\d{2})/;
-
+const englishRegex = /Received on ([A-z]{4,10} \d{1,2}, \d{4}) at (\d{1,2}):(\d{2}) ([AP]M)/
 export default class MessagesOTP implements OTPService {
     private context: BrowserContext;
     private page?: Page;
@@ -43,19 +43,26 @@ export default class MessagesOTP implements OTPService {
         const otp = this.page.locator('mws-text-message-part');
         const now = new Date();
         const nowDate = `${now.toLocaleString('he', { month: 'long', day: 'numeric' })} ${now.getFullYear()}`;
+        const englisthFormatted = now.toLocaleDateString('en-US', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric'
+        });
         for (let i = 0; i < mexRetries; i++) {
             const lastMessage = await otp.last().getAttribute('aria-label');
             if (!lastMessage) {
                 throw new Error('Failed to get last message');
             }
-            const match = lastMessage.match(recievedRegex);
+            let match = lastMessage.match(recievedRegex) || lastMessage.match(englishRegex);
             if (!match) {
                 throw new Error('Failed to match message');
             }
             const dateString = match[1];
-            const hours = Number(match[2]);
+            const isPM = match[4] === 'PM'
+
+            const hours = (Number(match[2]) + (isPM ? 12 : 0)) % 24;
             const minutes = Number(match[3]) + 1;
-            if (dateString !== nowDate || hours < now.getHours() || (hours === now.getHours() && minutes < now.getMinutes())) {
+            if ((dateString !== nowDate && dateString !== englisthFormatted) || hours < now.getHours() || (hours === now.getHours() && minutes < now.getMinutes())) {
                 await this.page.waitForTimeout(3000);
             } else {
                 const otpTextMatch = lastMessage.match(/(\d{6})/);

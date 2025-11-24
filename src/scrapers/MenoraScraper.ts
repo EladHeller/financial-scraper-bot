@@ -31,13 +31,13 @@ export class MenoraScraper implements Scraper {
 
       const idInput = this.page.getByLabel('מספר זהות');
       const otpWrapper = this.page.locator('.otpWrapper');
-      
+
       // Wait for login form
       await idInput.waitFor({
         state: 'visible',
         timeout: 10000
       });
-      const {identityNumber, phoneNumber} = this.config;
+      const { identityNumber, phoneNumber } = this.config;
 
       await idInput.fill(identityNumber);
       await this.page.getByLabel('טלפון / דוא"ל').fill(phoneNumber);
@@ -49,8 +49,8 @@ export class MenoraScraper implements Scraper {
       for (let i = 0; i < otp.length; i++) {
         await this.page.locator('.otpWrapper input').nth(i).fill(otp[i]);
       }
-      await this.page.getByRole('button', {name: "אישור"}).click();
-      
+      await this.page.getByRole('button', { name: "אישור" }).click();
+
       await this.page.waitForSelector('.sec-text', { timeout: 10000 });
     } catch (e) {
       const error = e as Error;
@@ -79,13 +79,14 @@ export class MenoraScraper implements Scraper {
         const amountText = await account.locator('.sec-text').first().innerText();
         const balance = Number(amountText.replace(/[,₪ ]/g, ''));
         if (isNaN(balance)) {
-          throw new Error('Failed to get balance');
+          console.log('Failed to get balance', accountName);
+        } else {
+          accountsData.push({
+            accountName: accountName || '',
+            balance,
+            lastUpdated: new Date(),
+          });
         }
-        accountsData.push({
-          accountName: accountName || '',
-          balance,
-          lastUpdated: new Date(),
-        });
       }
 
       return accountsData
@@ -94,7 +95,7 @@ export class MenoraScraper implements Scraper {
       throw new Error(`Data scraping failed: ${error.message}`);
     }
   }
-  
+
 
   async close(): Promise<void> {
     await this.page.close();

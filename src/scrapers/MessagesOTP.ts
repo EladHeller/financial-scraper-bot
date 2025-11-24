@@ -2,11 +2,11 @@ import { BrowserContext, Page } from "playwright";
 import { OTPService } from "../shared-types";
 
 const recievedRegex = /התקבלה ב-(\d{1,2} ב[א-ת]{3,10} \d{4}) בשעה (\d{1,2}):(\d{2})/;
-const englishRegex = /Received on ([A-z]{4,10} \d{1,2}, \d{4}) at (\d{1,2}):(\d{2}) ([AP]M)/
+const englishRegex = /Received on ([A-z]{4,10} \d{1,2}, \d{4}) at (\d{1,2}):(\d{2})\s([AP]M)/
 export default class MessagesOTP implements OTPService {
     private context: BrowserContext;
     private page?: Page;
-    
+
     constructor(context: BrowserContext) {
         this.context = context;
     }
@@ -17,7 +17,7 @@ export default class MessagesOTP implements OTPService {
         await this.page.waitForSelector('mws-conversation-list-item .name');
     }
 
-    async getOTP(name: string): Promise<string > {
+    async getOTP(name: string): Promise<string> {
         if (!this.page) {
             await this.init();
         }

@@ -29,15 +29,15 @@ export class AltshulerScraper implements Scraper {
         return;
       }
 
-      const idInput = this.page.getByPlaceholder('מספר ת.ז.');
+      const idInput = this.page.getByPlaceholder('.מספר ת.ז');
       const otpWrapper = this.page.locator('app-code-input-control');
-      
+
       // Wait for login form
       await idInput.waitFor({
         state: 'visible',
         timeout: 10000
       });
-      const {identityNumber, phoneNumber} = this.config;
+      const { identityNumber, phoneNumber } = this.config;
 
       await idInput.fill(identityNumber);
       await this.page.getByPlaceholder('מספר הטלפון שלי').fill(phoneNumber);
@@ -46,11 +46,9 @@ export class AltshulerScraper implements Scraper {
       await otpWrapper.waitFor({ state: 'visible', timeout: 20000 });
 
       const otp = await this.otpService.getOTP('Altshuler');
-      for (let i = 0; i < otp.length; i++) {
-        await otpWrapper.getByRole('textbox').nth(i).fill(otp[i]);
-      }
-      await this.page.getByRole('button', {name: "קחו אותי לאזור האישי"}).click();
-      
+      await otpWrapper.getByRole('textbox').fill(otp);
+      await this.page.getByRole('button', { name: "קחו אותי לאזור האישי" }).click();
+
       await this.page.waitForSelector('app-pension-product-box', { timeout: 10000 });
     } catch (e) {
       const error = e as Error;
@@ -94,7 +92,7 @@ export class AltshulerScraper implements Scraper {
       throw new Error(`Data scraping failed: ${error.message}`);
     }
   }
-  
+
 
   async close(): Promise<void> {
     await this.page.close();

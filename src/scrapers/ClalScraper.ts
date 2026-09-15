@@ -71,8 +71,8 @@ export class ClalScraper implements Scraper {
 
       for (let i = 0; i < accounts; i++) {
         const account = this.page.locator('app-policy-details-desktop').nth(i);
-        const accountNameText = await account.locator('.link-content-num-policy').innerText();
-        const accountName = accountNameText.trim().match(/\d{1,30}/)?.[0];
+        const accountNameText = await account.locator('.policy-info.one-line').innerText();
+        const accountName = accountNameText.trim().match(/\d{5,30}/)?.[0];
         if (!accountName) {
           throw new Error('Failed to get account name');
         }

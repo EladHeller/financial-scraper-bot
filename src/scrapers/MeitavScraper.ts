@@ -60,10 +60,10 @@ export class MeitavScraper implements Scraper {
       await this.login(LOGIN_URL);
 
       // Wait for account elements
-      const sumContainer = this.page.locator('.mainInfoItem .productSum').first();
+      const sumContainer = this.page.locator('.mainInfoItem .productSum input').first();
       await sumContainer.waitFor({ state: 'visible', timeout: 10000 });
       
-      const amountText = await sumContainer.innerText();
+      const amountText = await sumContainer.inputValue();
 
       return [{
         accountName: 'Meitav',

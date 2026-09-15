@@ -3,7 +3,7 @@ import { AccountData, BankConfig, Scraper } from '../shared-types';
 
 const BASE_URL = 'https://hb2.bankleumi.co.il';
 const TRADE_URL = BASE_URL + '/lti/lti-app/home';
-const MORTGAGE_URL = BASE_URL + '/ebanking/LoanAndMortgages/DisplayLoansAndMortgagesSummary.aspx';
+const MORTGAGE_URL = BASE_URL + '/ebanking/SO/SPA.aspx#/ts/reactFrame?action=mortgages';
 
 export class BankLeumiScraper implements Scraper {
   private page: Page;
@@ -97,12 +97,15 @@ export class BankLeumiScraper implements Scraper {
       await this.login(BASE_URL);
       // Wait for mortgage elements
       await this.page.getByRole('menuitem', {
-        name: 'הלוואות, משכנתאות וערבויות'
+        name: 'משכנתאות'
       }).waitFor({ state: 'visible', timeout: 10000 });
 
       await this.page.goto(MORTGAGE_URL);
       
-      const balanceText = await this.page.locator('.boldInExcel:nth-child(3)').textContent();
+      const balanceText = await this.page
+        .frameLocator('#iframeReactDesktop')
+        .locator('.MuiTypography-root.MuiTypography-display_Xlarge_bold_desktop')
+        .textContent();
       const balance = -parseFloat(balanceText?.replace(/[^0-9.-]+/g, '') || '0');
       const lastUpdated = new Date();        
       return [{

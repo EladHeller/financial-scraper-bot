@@ -38,11 +38,20 @@ export class GoogleSheetsService {
       const date = new Date().toISOString().split('T')[0];
       const rowsAndIds = await this.getRowsAndIds();
 
-      await Promise.all(rowsAndIds.map(async ({id, row}) => {
-        const accountData = data.find(account => account.accountName === id);
-        if (!accountData?.balance) {
-          return;
-        }
+      const updates = rowsAndIds.flatMap(({ id, row }) => {
+        const accountData = data.find(account => account.accountName.trim() === id);
+        return accountData && Number.isFinite(accountData.balance) ? [{ accountData, row }] : [];
+      });
+      const skippedAccounts = data.filter(account => !updates.some(update => update.accountData === account));
+      if (skippedAccounts.length) {
+        console.warn('Google Sheet accounts skipped (missing mapping or invalid balance):',
+          skippedAccounts.map(account => account.accountName));
+      }
+      if (!updates.length) {
+        throw new Error('No accounts updated. Check account IDs and destination rows in Finance!Q6:R, and scraped balances.');
+      }
+
+      await Promise.all(updates.map(async ({ accountData, row }) => {
         await this.sheets.spreadsheets.values.update({
           spreadsheetId: this.config.spreadsheetId,
           range: `Finance!${BALANCE_COLUMN}${row}`,
@@ -59,7 +68,7 @@ export class GoogleSheetsService {
             values: [[date]],
           },
         });
-        if (accountData.freeAmount) {
+        if (accountData.freeAmount != null && Number.isFinite(accountData.freeAmount)) {
           await this.sheets.spreadsheets.values.update({
             spreadsheetId: this.config.spreadsheetId,
             range: `Finance!${FREE_AMOUNT_COLUMN}${row}`,
@@ -71,7 +80,7 @@ export class GoogleSheetsService {
         }
       }));
 
-      console.log('Successfully updated Google Sheet');
+      console.log(`Successfully updated Google Sheet: ${updates.length} account row(s), ${skippedAccounts.length} account(s) skipped`);
     } catch (e) {
       const error = e as Error;
       throw new Error(`Failed to update Google Sheet: ${error.message}`);
@@ -82,7 +91,7 @@ export class GoogleSheetsService {
     try {
       const response = await this.sheets.spreadsheets.values.get({
         spreadsheetId: this.config.spreadsheetId,
-        range: 'Finance!Q6:R16',
+        range: 'Finance!P6:Q',
       });
 
       const values = response.data.values;
@@ -90,7 +99,16 @@ export class GoogleSheetsService {
         return [];
       }
 
-      return values.map(row => ({ id: row[0], row: row[1] }));
+      return values.flatMap((cells, index) => {
+        const id = String(cells[0] ?? '').trim();
+        const row = String(cells[1] ?? '').trim();
+        if (!id && !row) return [];
+        if (!id || !/^[1-9]\d*$/.test(row)) {
+          console.warn(`Skipping invalid account mapping at Finance!Q${index + 6}:R${index + 6}: expected an account ID in Q and a positive destination row number in R`);
+          return [];
+        }
+        return [{ id, row }];
+      });
     } catch (e) {
       const error = e as Error;
       throw new Error(`Failed to get rows and ids: ${error.message}`);  
